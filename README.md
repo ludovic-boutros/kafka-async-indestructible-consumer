@@ -11,6 +11,6 @@ Testcontainer is used for testing.
 On macos, I need to use these two properties to make it work with Colima:
 
 ```properties
-DOCKER_HOST=unix://<your_user_account>/.colima/default/docker.sock
+DOCKER_HOST=unix:///Users/<your_user_account>/.colima/default/docker.sock
 TESTCONTAINERS_RYUK_DISABLED=true
 ```
