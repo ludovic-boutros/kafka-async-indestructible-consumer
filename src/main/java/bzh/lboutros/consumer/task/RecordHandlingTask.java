@@ -22,7 +22,7 @@ public abstract class RecordHandlingTask implements Runnable {
     private final ConsumerRunnerBase consumer;
     private final ConsumerOffsets offsets;
 
-    public abstract void process(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler);
+    public abstract void handle(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler);
 
     @Override
     public void run() {
@@ -39,7 +39,7 @@ public abstract class RecordHandlingTask implements Runnable {
                 }
                 // Here we process each record.
                 // Consumer is paused for the current processed partitions.
-                process(record, consumer.getRecordHandler());
+                handle(record, consumer.getRecordHandler());
             } catch (Exception ex) {
                 try {
                     // We got a processing exception

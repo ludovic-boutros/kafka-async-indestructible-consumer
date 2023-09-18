@@ -44,7 +44,7 @@ public class InfiniteRetryRecordHandlingTask extends RecordHandlingTask {
     }
 
     @Override
-    public void process(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler) {
+    public void handle(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler) {
         // Process the record with a defined infinite retry strategy
         Decorators.ofFunction(recordHandler)
                 .withRetry(infiniteRetry)
