@@ -24,8 +24,9 @@ public class ErrorGeneratorConsumerRunner extends ConsumerRunnerBase {
     public ErrorGeneratorConsumerRunner(Properties consumerProperties,
                                         int threadCount,
                                         Function<ConsumerRecord<?, ?>, Void> recordHandler,
-                                        BiConsumer<ConsumerRecord<?, ?>, Exception> exceptionHandler) {
-        super("error-consumer", threadCount, consumerProperties, "my-topic");
+                                        BiConsumer<ConsumerRecord<?, ?>, Exception> exceptionHandler,
+                                        int retryInterval) {
+        super("error-consumer", threadCount, consumerProperties, "my-topic", retryInterval);
         this.recordHandler = recordHandler;
         this.exceptionHandler = exceptionHandler;
 

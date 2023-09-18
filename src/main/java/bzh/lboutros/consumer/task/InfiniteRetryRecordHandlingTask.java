@@ -20,30 +20,34 @@ import java.util.function.Function;
  * This is an implementation using Resilience4j in order to retry processing in case of retriable exception.
  */
 public class InfiniteRetryRecordHandlingTask extends RecordHandlingTask {
-    private static final Retry INFINITE_RETRY =
-            Retry.of("infinite",
-                    RetryConfig.custom()
-                            .maxAttempts(Integer.MAX_VALUE)
-                            .consumeResultBeforeRetryAttempt((i, result) ->
-                                    log.error("A retriable error occurred, retrying {}:{}", i, result))
-                            .intervalFunction(
-                                    IntervalFunction.of(Duration.ofMillis(1_000)))
-                            .writableStackTraceEnabled(true)
-                            .retryExceptions(RetriableException.class)
-                            .build());
+    private final Retry infiniteRetry;
 
     @Builder
     public InfiniteRetryRecordHandlingTask(ConsumerRecords<?, ?> records,
                                            ConsumerRunnerBase consumer,
-                                           ConsumerOffsets offsets) {
+                                           ConsumerOffsets offsets,
+                                           int retryInterval) {
         super(records, consumer, offsets);
+
+        infiniteRetry =
+                Retry.of("infinite",
+                        RetryConfig.custom()
+                                .maxAttempts(Integer.MAX_VALUE)
+                                .consumeResultBeforeRetryAttempt((i, result) ->
+                                        log.error("A retriable error occurred, retrying {}:{}", i, result))
+                                .intervalFunction(
+                                        // TODO: should be configurable
+                                        IntervalFunction.of(Duration.ofMillis(retryInterval)))
+                                .writableStackTraceEnabled(true)
+                                .retryExceptions(RetriableException.class)
+                                .build());
     }
 
     @Override
     public void process(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler) {
         // Process the record with a defined infinite retry strategy
         Decorators.ofFunction(recordHandler)
-                .withRetry(INFINITE_RETRY)
+                .withRetry(infiniteRetry)
                 .apply(record);
     }
 }

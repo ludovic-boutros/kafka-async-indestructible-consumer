@@ -30,11 +30,17 @@ public abstract class ConsumerRunnerBase implements ConsumerRunner {
     private final String topicName;
     private final List<Pair<ConsumerRecords<?, ?>, CompletableFuture<Void>>> completableFutures;
     private final ConsumerOffsets offsets = new ConsumerOffsets();
+    private final int retryInterval;
     private boolean stopped;
 
-    public ConsumerRunnerBase(String name, int threadCount, Properties consumerProperties, String topicName) {
+    public ConsumerRunnerBase(String name,
+                              int threadCount,
+                              Properties consumerProperties,
+                              String topicName,
+                              int retryInterval) {
         this.name = name;
         this.topicName = topicName;
+        this.retryInterval = retryInterval;
 
         this.consumerProperties = new Properties();
         this.consumerProperties.putAll(consumerProperties);
@@ -96,6 +102,7 @@ public abstract class ConsumerRunnerBase implements ConsumerRunner {
                                         .consumer(this)
                                         .records(records)
                                         .offsets(offsets)
+                                        .retryInterval(retryInterval)
                                         .build(),
                                 taskExecutor
                         )
