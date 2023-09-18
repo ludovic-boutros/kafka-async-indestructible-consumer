@@ -123,7 +123,7 @@ public abstract class ConsumerRunnerBase implements ConsumerRunner {
         try {
             consumer.commitSync(toBeCommitted);
         } catch (Exception e) {
-            // Something appended here, let's just warn for now, it should be reprocessed later
+            // Something happened here, let's just warn for now, it should be reprocessed later
             log.warn("Error while committing offsets...", e);
         }
     }
