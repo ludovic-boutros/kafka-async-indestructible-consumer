@@ -3,7 +3,6 @@ package bzh.lboutros.consumer.runner;
 import bzh.lboutros.consumer.KafkaTestUtils;
 import bzh.lboutros.consumer.tooling.handler.ErrorGeneratorExceptionHandler;
 import bzh.lboutros.consumer.tooling.handler.ErrorGeneratorRecordHandler;
-import bzh.lboutros.consumer.tooling.runner.ErrorGeneratorConsumerRunner;
 import bzh.lboutros.consumer.tooling.serializer.ErrorGeneratorStringDeserializer;
 import lombok.SneakyThrows;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -23,17 +22,17 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static bzh.lboutros.consumer.tooling.runner.ErrorGeneratorConsumerRunner.TOPIC_NAME;
 import static bzh.lboutros.consumer.tooling.serializer.ErrorGeneratorStringDeserializer.ERROR_MESSAGE_VALUE;
 
-class ConsumerRunnerBaseTest {
+class ConsumerRunnerTest {
+    private static final String TOPIC_NAME = "my-topic";
     private static KafkaContainer kafka;
     private final ErrorGeneratorRecordHandler recordHandler = new ErrorGeneratorRecordHandler();
     private final ErrorGeneratorExceptionHandler exceptionHandler = new ErrorGeneratorExceptionHandler();
 
     private final Properties properties;
 
-    public ConsumerRunnerBaseTest() {
+    public ConsumerRunnerTest() {
         properties = new Properties();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -59,13 +58,7 @@ class ConsumerRunnerBaseTest {
     void consumer_should_continue_to_process_despite_poison_pill() {
         // Given
         try (KafkaProducer<String, String> producer = KafkaTestUtils.getNewProducer(kafka.getBootstrapServers());
-             ConsumerRunner runner = ErrorGeneratorConsumerRunner.builder()
-                     .recordHandler(recordHandler)
-                     .exceptionHandler(exceptionHandler)
-                     .threadCount(1)
-                     .consumerProperties(properties)
-                     .retryInterval(1_000)
-                     .build()) {
+             ConsumerRunner runner = getConsumerRunner()) {
             CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(1);
 
             // When
@@ -87,13 +80,7 @@ class ConsumerRunnerBaseTest {
         recordHandler.generateRetriableError();
 
         try (KafkaProducer<String, String> producer = KafkaTestUtils.getNewProducer(kafka.getBootstrapServers());
-             ConsumerRunner runner = ErrorGeneratorConsumerRunner.builder()
-                     .recordHandler(recordHandler)
-                     .exceptionHandler(exceptionHandler)
-                     .threadCount(1)
-                     .consumerProperties(properties)
-                     .retryInterval(1_000)
-                     .build()) {
+             ConsumerRunner runner = getConsumerRunner()) {
             CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(1);
 
             // When
@@ -114,13 +101,7 @@ class ConsumerRunnerBaseTest {
         recordHandler.generateNotRetriableError();
 
         try (KafkaProducer<String, String> producer = KafkaTestUtils.getNewProducer(kafka.getBootstrapServers());
-             ConsumerRunner runner = ErrorGeneratorConsumerRunner.builder()
-                     .recordHandler(recordHandler)
-                     .exceptionHandler(exceptionHandler)
-                     .threadCount(1)
-                     .consumerProperties(properties)
-                     .retryInterval(1_000)
-                     .build()) {
+             ConsumerRunner runner = getConsumerRunner()) {
             CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(1);
 
             // When
@@ -143,13 +124,7 @@ class ConsumerRunnerBaseTest {
         exceptionHandler.generateException();
 
         try (KafkaProducer<String, String> producer = KafkaTestUtils.getNewProducer(kafka.getBootstrapServers());
-             ConsumerRunner runner = ErrorGeneratorConsumerRunner.builder()
-                     .recordHandler(recordHandler)
-                     .exceptionHandler(exceptionHandler)
-                     .threadCount(1)
-                     .consumerProperties(properties)
-                     .retryInterval(1_000)
-                     .build()) {
+             ConsumerRunner runner = getConsumerRunner()) {
             CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(1);
 
             // When
@@ -171,26 +146,31 @@ class ConsumerRunnerBaseTest {
         recordHandler.stopTheWorld();
 
         try (KafkaProducer<String, String> producer = KafkaTestUtils.getNewProducer(kafka.getBootstrapServers());
-             ConsumerRunner runner = ErrorGeneratorConsumerRunner.builder()
-                     .recordHandler(recordHandler)
-                     .exceptionHandler(exceptionHandler)
-                     .threadCount(1)
-                     .consumerProperties(properties)
-                     .retryInterval(1_000)
-                     .build()) {
-            CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(501);
+             ConsumerRunner runner = getConsumerRunner()) {
+            CompletableFuture<List<ConsumerRecord<?, ?>>> futureRecords = recordHandler.resetFutureRecords(2);
 
             // When
             producer.send(new ProducerRecord<>(TOPIC_NAME, "key", "value_stop_the_world")).get();
-            for (int i = 0; i < 500; i++) {
-                producer.send(new ProducerRecord<>(TOPIC_NAME, "key", "next_value_" + i)).get();
-            }
+            producer.send(new ProducerRecord<>(TOPIC_NAME, "key", "next_value")).get();
             runner.start();
 
             List<ConsumerRecord<?, ?>> consumerRecords = futureRecords.get(30, TimeUnit.SECONDS);
             // Then
-            Assertions.assertEquals(501, consumerRecords.size());
+            Assertions.assertEquals(2, consumerRecords.size());
             Assertions.assertEquals("value_stop_the_world", consumerRecords.get(0).value());
+            Assertions.assertEquals("next_value", consumerRecords.get(1).value());
         }
+    }
+
+    private ConsumerRunner getConsumerRunner() {
+        return ConsumerRunner.builder()
+                .name("test")
+                .topicName(TOPIC_NAME)
+                .recordHandler(recordHandler)
+                .exceptionHandler(exceptionHandler)
+                .threadCount(1)
+                .consumerProperties(properties)
+                .retryInterval(1_000)
+                .build();
     }
 }

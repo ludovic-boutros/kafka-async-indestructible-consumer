@@ -1,7 +1,7 @@
 package bzh.lboutros.consumer.task;
 
 import bzh.lboutros.consumer.offset.ConsumerOffsets;
-import bzh.lboutros.consumer.runner.ConsumerRunnerBase;
+import bzh.lboutros.consumer.runner.ConsumerRunner;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -19,7 +19,7 @@ import static bzh.lboutros.consumer.serializer.ErrorProofDeserializer.DESERIALIZ
 @AllArgsConstructor
 public abstract class RecordHandlingTask implements Runnable {
     private final ConsumerRecords<?, ?> records;
-    private final ConsumerRunnerBase consumer;
+    private final ConsumerRunner consumer;
     private final ConsumerOffsets offsets;
 
     public abstract void handle(ConsumerRecord<?, ?> record, Function<ConsumerRecord<?, ?>, Void> recordHandler);

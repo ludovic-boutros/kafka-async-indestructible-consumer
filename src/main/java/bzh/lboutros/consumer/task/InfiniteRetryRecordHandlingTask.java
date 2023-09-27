@@ -1,7 +1,7 @@
 package bzh.lboutros.consumer.task;
 
 import bzh.lboutros.consumer.offset.ConsumerOffsets;
-import bzh.lboutros.consumer.runner.ConsumerRunnerBase;
+import bzh.lboutros.consumer.runner.ConsumerRunner;
 import bzh.lboutros.consumer.task.exception.RetriableException;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.decorators.Decorators;
@@ -16,15 +16,12 @@ import java.time.Duration;
 import java.util.function.Function;
 
 @Slf4j
-/*
- * This is an implementation using Resilience4j in order to retry processing in case of retriable exception.
- */
 public class InfiniteRetryRecordHandlingTask extends RecordHandlingTask {
     private final Retry infiniteRetry;
 
     @Builder
     public InfiniteRetryRecordHandlingTask(ConsumerRecords<?, ?> records,
-                                           ConsumerRunnerBase consumer,
+                                           ConsumerRunner consumer,
                                            ConsumerOffsets offsets,
                                            int retryInterval) {
         super(records, consumer, offsets);
@@ -36,7 +33,6 @@ public class InfiniteRetryRecordHandlingTask extends RecordHandlingTask {
                                 .consumeResultBeforeRetryAttempt((i, result) ->
                                         log.error("A retriable error occurred, retrying {}:{}", i, result))
                                 .intervalFunction(
-                                        // TODO: should be configurable
                                         IntervalFunction.of(Duration.ofMillis(retryInterval)))
                                 .writableStackTraceEnabled(true)
                                 .retryExceptions(RetriableException.class)
