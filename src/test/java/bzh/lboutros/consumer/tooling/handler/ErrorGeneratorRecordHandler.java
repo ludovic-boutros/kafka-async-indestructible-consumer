@@ -1,6 +1,8 @@
 package bzh.lboutros.consumer.tooling.handler;
 
 import bzh.lboutros.consumer.task.exception.RetriableException;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.testcontainers.shaded.com.google.common.util.concurrent.Uninterruptibles;
@@ -12,9 +14,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 @Slf4j
+@RequiredArgsConstructor
 public class ErrorGeneratorRecordHandler implements Function<ConsumerRecord<?, ?>, Void> {
     private static final String BOOM = "RECORD_HANDLER BOOM !!!";
+    @Getter
     private final List<ConsumerRecord<?, ?>> consumedRecords = new ArrayList<>();
+    private final String clientId;
     private int expectedRecordCount;
     private boolean generateRetriableError = false;
     private boolean generateNotRetriableError = false;
@@ -61,7 +66,7 @@ public class ErrorGeneratorRecordHandler implements Function<ConsumerRecord<?, ?
         }
 
         Uninterruptibles.sleepUninterruptibly(20, TimeUnit.MILLISECONDS);
-        log.info("{} -> {}", record.key(), record.value());
+        log.info("{}: [{}-{}]: {} -> {}", clientId, record.topic(), record.partition(), record.key(), record.value());
         consumedRecords.add(record);
         if (consumedRecords.size() == expectedRecordCount) {
             futureRecords.complete(consumedRecords);

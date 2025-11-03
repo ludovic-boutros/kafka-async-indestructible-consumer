@@ -1,6 +1,7 @@
 package bzh.lboutros.consumer.runner;
 
 import bzh.lboutros.consumer.offset.ConsumerOffsets;
+import bzh.lboutros.consumer.offset.InfiniteRetriesRebalanceListener;
 import bzh.lboutros.consumer.serializer.ErrorProofDeserializer;
 import bzh.lboutros.consumer.task.InfiniteRetryRecordHandlingTask;
 import lombok.Builder;
@@ -9,31 +10,37 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.io.Closeable;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
+import static bzh.lboutros.consumer.runner.SafeConsumerFunctions.*;
 import static bzh.lboutros.consumer.serializer.ErrorProofDeserializer.DELEGATE_SUFFIX;
 
 @Slf4j
 public class ConsumerRunner implements Closeable {
     @Getter
     private final String name;
+    @Getter
+    private final Integer instanceId;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ExecutorService taskExecutor;
     private final Properties consumerProperties;
     private final String topicName;
     private final List<Pair<ConsumerRecords<?, ?>, CompletableFuture<Void>>> completableFutures;
-    private final ConsumerOffsets offsets = new ConsumerOffsets();
+    private final ConsumerOffsets offsets;
     private final int retryInterval;
     @Getter
     private final Function<ConsumerRecord<?, ?>, Void> recordHandler;
@@ -43,6 +50,7 @@ public class ConsumerRunner implements Closeable {
 
     @Builder
     public ConsumerRunner(@NonNull String name,
+                          Integer instanceId,
                           int threadCount,
                           @NonNull Properties consumerProperties,
                           @NonNull String topicName,
@@ -54,10 +62,12 @@ public class ConsumerRunner implements Closeable {
         this.retryInterval = retryInterval;
         this.recordHandler = recordHandler;
         this.exceptionHandler = exceptionHandler;
+        this.instanceId = instanceId != null ? instanceId : 0;
+        this.offsets = new ConsumerOffsets(getClientId());
 
         this.consumerProperties = new Properties();
         this.consumerProperties.putAll(consumerProperties);
-        this.consumerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, name);
+        this.consumerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, getClientId());
         this.consumerProperties.setProperty(CommonClientConfigs.GROUP_ID_CONFIG, name);
         // Use error proof deserializers and save configured ones
         this.consumerProperties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG + DELEGATE_SUFFIX,
@@ -76,30 +86,38 @@ public class ConsumerRunner implements Closeable {
         taskExecutor = Executors.newFixedThreadPool(threadCount, r -> new Thread(r, getName()));
     }
 
+    private String getClientId() {
+        return this.name + "-" + this.instanceId;
+    }
+
     public void start() {
         executor.submit(() -> {
             while (!stopped) {
                 try (KafkaConsumer<?, ?> consumer =
                              new KafkaConsumer<>(consumerProperties)) {
-                    consumer.subscribe(List.of(topicName));
+                    consumer.subscribe(List.of(topicName), new InfiniteRetriesRebalanceListener(consumer, offsets));
 
                     while (!stopped) {
                         ConsumerRecords<?, ?> records = consumer.poll(Duration.ofMillis(1000));
 
-                        log.debug("Runner {}: Fetched {} records. Consumer is paused for partitions: {}", name, records.count(), consumer.paused());
+                        log.debug("Runner {}: Fetched {} records. Consumer is paused for partitions: {}", getClientId(), records.count(), consumer.paused());
 
                         if (!records.isEmpty()) {
-                            consumer.pause(records.partitions());
-                            asyncProcess(records);
+                            if (safePause(consumer, records.partitions())) {
+                                // If pause was successful, process records asynchronously.
+                                // Otherwise, it means we these partitions are not assigned to us anymore.
+                                // We need to poll again, and they will be reprocessed later.
+                                asyncProcess(records);
+                            }
                         }
                         checkForCompletedTasks(consumer);
                     }
                 } catch (Exception ex) {
-                    log.error("Runner {}: Fatal error during consumer poll, trying to reconnect...", name, ex);
+                    log.error("Runner {}: Fatal error during consumer poll, trying to reconnect...", getClientId(), ex);
                 }
             }
 
-            log.info("Runner {}: Terminating...", name);
+            log.info("Runner {}: Terminating...", getClientId());
         });
     }
 
@@ -138,20 +156,10 @@ public class ConsumerRunner implements Closeable {
         completedTasks.forEach(task -> {
             completableFutures.remove(task);
 
-            safeCommit(consumer, task.getLeft().partitions());
-            consumer.resume(task.getLeft().partitions());
+            safeCommit(consumer, task.getLeft().partitions(), offsets);
+            safeResume(consumer, task.getLeft().partitions(), offsets);
         });
     }
 
-    private void safeCommit(KafkaConsumer<?, ?> consumer, Set<TopicPartition> partitions) {
-        Map<TopicPartition, OffsetAndMetadata> toBeCommitted = partitions.stream()
-                .collect(Collectors.toMap(Function.identity(), offsets::get));
 
-        try {
-            consumer.commitSync(toBeCommitted);
-        } catch (Exception e) {
-            // Something happened here, let's just warn for now, it should be reprocessed later
-            log.warn("Error while committing offsets...", e);
-        }
-    }
 }
