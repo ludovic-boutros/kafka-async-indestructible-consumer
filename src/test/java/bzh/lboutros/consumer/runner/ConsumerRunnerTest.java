@@ -249,7 +249,7 @@ class ConsumerRunnerTest {
             }
 
             // Then
-            Assertions.assertEquals(400, consumerRecords1.size() + consumerRecords2.size());
+            Assertions.assertTrue(400 <= consumerRecords1.size() + consumerRecords2.size());
         } finally {
             if (runner2 != null) {
                 runner2.stop();

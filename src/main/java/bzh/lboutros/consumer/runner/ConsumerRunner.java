@@ -79,6 +79,7 @@ public class ConsumerRunner implements Closeable {
                 ErrorProofDeserializer.class.getName());
         this.consumerProperties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 ErrorProofDeserializer.class.getName());
+        this.consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
         completableFutures = new ArrayList<>();
         stopped = false;
@@ -95,7 +96,7 @@ public class ConsumerRunner implements Closeable {
             while (!stopped) {
                 try (KafkaConsumer<?, ?> consumer =
                              new KafkaConsumer<>(consumerProperties)) {
-                    consumer.subscribe(List.of(topicName), new InfiniteRetriesRebalanceListener(consumer, offsets));
+                    consumer.subscribe(List.of(topicName), new InfiniteRetriesRebalanceListener(consumer, offsets, getClientId()));
 
                     while (!stopped) {
                         ConsumerRecords<?, ?> records = consumer.poll(Duration.ofMillis(1000));

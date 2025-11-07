@@ -66,7 +66,7 @@ public class ErrorGeneratorRecordHandler implements Function<ConsumerRecord<?, ?
         }
 
         Uninterruptibles.sleepUninterruptibly(20, TimeUnit.MILLISECONDS);
-        log.info("{}: [{}-{}]: {} -> {}", clientId, record.topic(), record.partition(), record.key(), record.value());
+        log.info("[{}][{}-{}]: {} -> {}", clientId, record.topic(), record.partition(), record.key(), record.value());
         consumedRecords.add(record);
         if (consumedRecords.size() == expectedRecordCount) {
             futureRecords.complete(consumedRecords);

@@ -29,7 +29,7 @@ public class ConsumerOffsets {
                                 .build();
                     } else {
                         if (pom.isRevoked()) {
-                            log.info("{} - Cannot increment offset to {} for topic-partition '{}-{}'. " +
+                            log.info("[{}] Cannot increment offset to {} for topic-partition '{}-{}'. " +
                                             "Seems we have been revoked from this partition.",
                                     clientId,
                                     record.offset() + 1,
@@ -48,7 +48,7 @@ public class ConsumerOffsets {
     public void revokePartition(TopicPartition topicPartition) {
         offsets.compute(topicPartition, (tp, pom) -> {
             if (pom == null) {
-                log.warn("{} - Trying to revoke partition '{}' but no offset found for it.", clientId, topicPartition);
+                log.info("[{}] Trying to revoke partition '{}' but no offset found for it.", clientId, topicPartition);
                 return null;
             } else {
                 pom.setRevoked(true);
@@ -76,6 +76,18 @@ public class ConsumerOffsets {
         } else {
             return null;
         }
+    }
+
+    public void unrevokePartition(TopicPartition topicPartition) {
+        offsets.compute(topicPartition, (tp, pom) -> {
+            if (pom == null) {
+                log.info("[{}] Trying to unrevoke partition '{}' but no offset found for it.", clientId, topicPartition);
+                return null;
+            } else {
+                pom.setRevoked(false);
+                return pom;
+            }
+        });
     }
 
     @Getter

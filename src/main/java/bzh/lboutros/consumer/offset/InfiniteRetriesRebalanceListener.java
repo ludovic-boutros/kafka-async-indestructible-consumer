@@ -14,15 +14,17 @@ import java.util.Map;
 public class InfiniteRetriesRebalanceListener implements ConsumerRebalanceListener {
     private final Consumer<?, ?> consumer;
     private final ConsumerOffsets offsets;
+    private final String clientId;
 
-    public InfiniteRetriesRebalanceListener(Consumer<?, ?> consumer, ConsumerOffsets offsets) {
+    public InfiniteRetriesRebalanceListener(Consumer<?, ?> consumer, ConsumerOffsets offsets, String clientId) {
         this.consumer = consumer;
         this.offsets = offsets;
+        this.clientId = clientId;
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        log.info("Revoked partitions: {}", partitions);
+        log.info("[{}] Revoked partitions: {}", clientId, partitions);
         for (TopicPartition topicPartition : partitions) {
             offsets.revokePartition(topicPartition);
         }
@@ -30,12 +32,16 @@ public class InfiniteRetriesRebalanceListener implements ConsumerRebalanceListen
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        log.info("Assigned partitions: {}", partitions);
+        log.info("[{}] Assigned partitions: {}", clientId, partitions);
         Map<TopicPartition, OffsetAndMetadata> offsetsFromKafka = consumer.committed(new HashSet<>(partitions));
+
         for (Map.Entry<TopicPartition, OffsetAndMetadata> offsetsEntry : offsetsFromKafka.entrySet()) {
             // Position can be unknown when you first initialize the group, let's be lazy here, when messages will be consumed, the map will be filled.
             if (offsetsEntry.getValue() != null) {
                 offsets.addNewOffsetForPartition(offsetsEntry.getKey(), offsetsEntry.getValue());
+            } else {
+                // Make sure the partition are unrevoked
+                offsets.unrevokePartition(offsetsEntry.getKey());
             }
         }
     }

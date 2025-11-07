@@ -24,7 +24,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition = new TopicPartition("topic", 0);
         consumer.subscribe(List.of("topic"), listener);
         consumer.updateBeginningOffsets(Map.of(topicPartition, 0L));
@@ -43,7 +43,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition = new TopicPartition("topic", 0);
         consumer.subscribe(List.of("topic"), listener);
         consumer.updateBeginningOffsets(Map.of(topicPartition, 0L));
@@ -67,7 +67,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition0 = new TopicPartition("topic", 0);
         TopicPartition topicPartition1 = new TopicPartition("topic", 1);
         consumer.subscribe(List.of("topic"), listener);
@@ -110,7 +110,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition0 = new TopicPartition("topic", 0);
         TopicPartition topicPartition1 = new TopicPartition("topic", 1);
         consumer.subscribe(List.of("topic"), listener);
@@ -165,7 +165,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition0 = new TopicPartition("topic", 0);
         TopicPartition topicPartition1 = new TopicPartition("topic", 1);
         consumer.subscribe(List.of("topic"), listener);
@@ -222,7 +222,7 @@ public class ConsumerOffsetTest {
         // Given
         MockConsumer<Object, Object> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         ConsumerOffsets offsets = new ConsumerOffsets("client-1");
-        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets);
+        InfiniteRetriesRebalanceListener listener = new InfiniteRetriesRebalanceListener(consumer, offsets, "client-1");
         TopicPartition topicPartition0 = new TopicPartition("topic", 0);
         TopicPartition topicPartition1 = new TopicPartition("topic", 1);
         consumer.subscribe(List.of("topic"), listener);
